@@ -15,3 +15,18 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.count {
+  position: fixed;
+  top: 0;
+  right: 10px;
+  font-weight: bold;
+  font-size: 20vw;
+  will-change: color;
+  color: black;
+  transition: color cubic-bezier(0.6, -0.28, 0.735, 0.045);
+}
+
+.count.active {
+  color: blue;
+}
