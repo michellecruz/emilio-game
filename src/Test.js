@@ -9,20 +9,20 @@ let INTERSECTED;
 class Test extends Component {
   state = {
     emilio: {
-      x: -14,
-      y: 32,
-      z: 1,
+      x: -9,
+      y: 9,
     }
   }
   
   init = () => {
-    camera = new THREE.PerspectiveCamera( 1, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.set( 0, 0, 1000 );
+    camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 1000 );
+    camera.position.set( 0, 0, 10 );
   
     scene = new THREE.Scene();
     scene.background = new THREE.Color( 0xffffff );
+    scene.add( camera );
 
-    geometry = new THREE.SphereBufferGeometry( 5, 64, 32 );
+    geometry = new THREE.SphereBufferGeometry( 1, 32, 32 );
     texture = new THREE.TextureLoader().load( 'img/milio3.jpg' );
     textureOpen = new THREE.TextureLoader().load( 'img/milio3-open.jpg' );
     material = new THREE.MeshBasicMaterial( { map: texture } );
@@ -31,7 +31,6 @@ class Test extends Component {
     mesh.rotation.x = 0.2;
     mesh.rotation.y = 6.6;
     mesh.rotation.z = 5;
-    mesh.position.z = this.state.emilio.z;
     mesh.position.y = this.state.emilio.y;
     mesh.position.x = this.state.emilio.x;
 
@@ -41,7 +40,6 @@ class Test extends Component {
     this.kibble();
 
 
-    raycaster = new THREE.Raycaster()
     renderer = new THREE.WebGLRenderer( { antialias: true } );
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );  
@@ -49,74 +47,80 @@ class Test extends Component {
   }
 
   kibble = () => {
-    geometryKibble = new THREE.SphereBufferGeometry( 0.6, 230, 100 );
+    geometryKibble = new THREE.SphereBufferGeometry( 1, 32, 32 );
     textureKibble = new THREE.TextureLoader().load( 'img/kibble.png' );
-    materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, transparent: true } );
+    materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, color: 0xff0000, transparent: true } );
     meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
     meshKibble.rotation.y = 10
-    meshKibble.position.y = -4
+
     meshKibble.position.x = 10
+    meshKibble.position.y = 0
     meshKibble.position.z = 10
+    
     scene.add( meshKibble );
   }
 
   animate = () => {
     requestAnimationFrame( this.animate );
 
-    if (mesh.position.y > -3) {
-      mesh.position.y -= 0.3;
+    if (mesh.position.y > 0) {
+      mesh.position.y -= 0.1;
     } else {
       mesh.material.map = texture;
     }
-    mesh.position.x += 0.03;
-    mesh.rotation.z -= 0.005 * -mesh.position.y;
-    if (mesh.position.x > 0) {
-      camera.position.x += 0.03;
+
+    mesh.position.x += 0.05;
+
+    if (mesh.position.y > 0) {
+      mesh.rotation.z -= 0.05 * -mesh.position.y;
+    } else {
+      mesh.rotation.z -= 0.05
     }
+    
+    if (mesh.position.x > 0) {
+      camera.position.x += 0.05;
+    }
+
     renderer.render( scene, camera );
     
-    
 
-    raycaster.setFromCamera( scene, camera );
-    let intersects = raycaster.intersectObjects( scene.children );
-    // console.log(intersects);
-    if ( intersects.length > 0 ) {
-      if ( INTERSECTED !== intersects[ 0 ].object ) {
-        if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-        INTERSECTED = intersects[ 0 ].object;
-        INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-        INTERSECTED.material.emissive.setHex( 0xff0000 );
-      }
-    } else {
-      if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
-      INTERSECTED = null;
+
+    if (mesh.position.x > 0) {
+      raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(meshKibble.position, camera);
+      let intersects = raycaster.intersectObjects( scene.children );
+      console.log(intersects.length, meshKibble.position, camera.position);
     }
+
+      // if ( intersects.length > 0 ) {
+      //   if ( INTERSECTED !== intersects[ 0 ].object ) {
+      //     if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+      //     INTERSECTED = intersects[ 0 ].object;
+      //     INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+      //     INTERSECTED.material.emissive.setHex( 0xff0000 );
+      //   }
+      // } else {
+      //   if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+      //   INTERSECTED = null;
+      // }
   }
 
   changePosition = () => {
-    // mesh.position.y += 4 * -(mesh.position.x * 0.1);
     mesh.position.x += 1;
+    mesh.position.y += 4;
     
     if (mesh.position.x > 0) {
       camera.position.x += 1;
     }
     
     if (mesh.position.x < 0) {
-      mesh.rotation.z += 0.5 * -mesh.position.y;
+      mesh.rotation.z += 0.01 * -mesh.position.x;
     }
-
 
     if (mesh.position.y > -3) {
-      mesh.position.y += 4 * (mesh.position.y * 1.3);
+      mesh.position.y += 4 * (mesh.position.y * 0.1);
     }
 
-    if (mesh.position.y < -3) {
-      mesh.position.y += 4;
-    }
-    console.log(mesh.position.y)
-
-
-    
     mesh.material.map = textureOpen;
   }
 
@@ -132,7 +136,7 @@ class Test extends Component {
       //     y: 0.1,
       //   }
       // },
-      this.changePosition() : null
+      requestAnimationFrame(this.changePosition) : null
     );
 
     window.addEventListener("touchstart", this.changePosition);
