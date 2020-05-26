@@ -4,7 +4,7 @@ import * as THREE from 'three';
 let camera, scene, renderer;
 let geometry, texture, textureOpen, material, mesh;
 let geometryKibble, textureKibble, materialKibble, meshKibble;
-let geometryKibble2, textureKibble2, materialKibble2, meshKibble2;
+let meshKibble2, meshKibble3, meshKibble4, meshKibble5, meshKibble6;
 let count, emilioEats;
 
 class Test extends Component {
@@ -15,7 +15,7 @@ class Test extends Component {
 
   init = () => {
     camera = new THREE.PerspectiveCamera( 1.8, window.innerWidth / window.innerHeight, 1, 1000 );
-    camera.position.set( 0, 8, 1000 );
+    camera.position.set( 0, 5, 1000 );
   
     scene = new THREE.Scene();
     scene.background = new THREE.Color( 0xffffff );
@@ -58,16 +58,33 @@ class Test extends Component {
     meshKibble.position.z = 8
     scene.add( meshKibble );
 
-
-    geometryKibble2 = new THREE.SphereBufferGeometry( 2, 32, 32 );
-    textureKibble2 = new THREE.TextureLoader().load( 'img/kibble.png' );
-    materialKibble2 = new THREE.MeshBasicMaterial( { map: textureKibble2, transparent: true } );
-    meshKibble2 = new THREE.Mesh( geometryKibble2, materialKibble2 );
+    meshKibble2 = new THREE.Mesh( geometryKibble, materialKibble );
     meshKibble2.rotation.y = 10
     meshKibble2.position.x = 85
-    meshKibble2.position.y = 16
+    meshKibble2.position.y = 15
     meshKibble2.position.z = 8
     scene.add( meshKibble2 );
+
+    meshKibble3 = new THREE.Mesh( geometryKibble, materialKibble );
+    meshKibble3.rotation.y = 10
+    meshKibble3.position.x = 185
+    meshKibble3.position.y = 5
+    meshKibble3.position.z = 8
+    scene.add( meshKibble3 );
+
+    meshKibble4 = new THREE.Mesh( geometryKibble, materialKibble );
+    meshKibble4.rotation.y = 10
+    meshKibble4.position.x = 285
+    meshKibble4.position.y = 20
+    meshKibble4.position.z = 8
+    scene.add( meshKibble4 );
+
+    meshKibble5 = new THREE.Mesh( geometryKibble, materialKibble );
+    meshKibble5.rotation.y = 10
+    meshKibble5.position.x = 330
+    meshKibble5.position.y = 8
+    meshKibble5.position.z = 8
+    scene.add( meshKibble5 );
   }
 
   animate = () => {
@@ -77,7 +94,7 @@ class Test extends Component {
 
     if (mesh.position.y > 0) {
       mesh.position.y -= 0.2;
-      mesh.position.x += 0.5;
+      mesh.position.x += 0.3;
 
       if (mesh.position.x < 0) {
         mesh.rotation.z -= 0.05 * -mesh.position.y;
@@ -85,7 +102,6 @@ class Test extends Component {
         mesh.rotation.z -= 0.01 * -mesh.position.y;
       }
     } else {
-      mesh.material.map = texture;
       mesh.rotation.z -= 0.05
     }
 
@@ -95,8 +111,15 @@ class Test extends Component {
 
     renderer.render( scene, camera );
 
+    this.eatKibble(meshKibble5, mesh);
+    this.eatKibble(meshKibble4, mesh);
+    this.eatKibble(meshKibble3, mesh);
     this.eatKibble(meshKibble2, mesh);
     this.eatKibble(meshKibble, mesh);
+
+    if (mesh.position.y <= 0 && !this.state.isEating) {
+      mesh.material.map = texture;
+    }
   }
 
   eatKibble = (sphereOne, sphereTwo) => {
@@ -121,13 +144,13 @@ class Test extends Component {
   }
 
   emilioEating = (sphereOne, sphereTwo) => {
-
     console.log(sphereOne.layers.mask)
+
     if (this.state.isEating) {
       sphereOne.visible = false;
-      sphereTwo.scale.set(sphereTwo.scale.x + 0.01, sphereTwo.scale.y + 0.01, sphereTwo.scale.z + 0.01);
+      sphereTwo.scale.set(sphereTwo.scale.x + 0.02, sphereTwo.scale.y + 0.02, sphereTwo.scale.z + 0.02);
       sphereTwo.rotation.z = -1.5;
-
+  
       this.setState({
         kibbleEaten: this.state.kibbleEaten+1,
       })
@@ -135,16 +158,18 @@ class Test extends Component {
       count.classList.add('active');
 
       requestAnimationFrame( 
-        function(){if (sphereTwo.material.map === texture) {
-          setTimeout(function(){
-            sphereTwo.material.map = textureOpen
-          }, 50);
-        } else  {
-          setTimeout(function(){
-            sphereTwo.material.map = texture
-          }, 50);
+        function(){
+          if (sphereTwo.material.map === texture) {
+            setTimeout(function(){
+              sphereTwo.material.map = textureOpen
+            }, 50);
+          } else  {
+            setTimeout(function(){
+              sphereTwo.material.map = texture
+            }, 50);
+          }
         }
-      });
+      );
     } else {
       if (count.classList.contains('active')) {
         count.classList.remove('active');
@@ -153,18 +178,11 @@ class Test extends Component {
   }
 
   changePosition = () => {
-    mesh.position.x += 0.001;
-    mesh.position.y += 4;
-    
-    if (mesh.position.x > 0) {
-      camera.position.x += 0.001;
-    }
-
+    mesh.position.y += 5;
     if (mesh.position.y > 0) {
       mesh.position.y += 2 * -(mesh.position.y * 0.01);
+      mesh.material.map = textureOpen;
     }
-
-    mesh.material.map = textureOpen;
   }
 
   spheresIntersect = (sphere1, sphere1position, sphere2, sphere2position) => {
@@ -192,6 +210,7 @@ class Test extends Component {
   render() {
     return (
       <div>
+        <div className="note">press the spacebar or tap to jump</div>
         <div className="count">{ this.state.kibbleEaten }</div>
         <div ref="canvas"></div>
       </div>
