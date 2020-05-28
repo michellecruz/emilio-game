@@ -3,9 +3,22 @@ import * as THREE from 'three';
 
 let camera, scene, renderer, canvas;
 let geometry, texture, textureOpen, material, mesh;
-let geometryKibble, textureKibble, materialKibble;
-let meshKibble, meshKibble2, meshKibble3, meshKibble4, meshKibble5, meshKibble6;
+let geometryKibble, textureKibble, materialKibble, meshKibbleFixed, emilioEats;
+let spheres = [];
 
+let isTwirling = true;
+
+window.requestAnimationFrame = window.requestAnimationFrame
+    || window.mozRequestAnimationFrame
+    || window.webkitRequestAnimationFrame
+    || window.msRequestAnimationFrame
+    || function(f){return setTimeout(f, 1000/60)} // simulate calling code 60 
+ 
+window.cancelAnimationFrame = window.cancelAnimationFrame
+    || window.mozCancelAnimationFrame
+    || function(requestID){clearTimeout(requestID)} //fall back
+
+    
 class Test extends Component {
   state = {
     width: window.innerWidth,
@@ -61,7 +74,7 @@ class Test extends Component {
     scene.add( mesh );
   
     // Scatter the treats!
-    this.kibble();
+    this.addKibble();
 
     // Draw the canvas and append to the dom
     renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -81,52 +94,44 @@ class Test extends Component {
     })
   }
 
-  kibble = () => {
-    geometryKibble = new THREE.SphereBufferGeometry( 2, 32, 32 );
+  addKibble = () => {
+    geometryKibble = new THREE.SphereBufferGeometry( 0.4, 32, 32 );
     textureKibble = new THREE.TextureLoader().load( 'img/kibble.png' );
     materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, transparent: true } );
 
-    meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
-    meshKibble.rotation.y = 10
-    meshKibble.position.x = 15
-    meshKibble.position.y = 10
-    meshKibble.position.z = 8
-    scene.add( meshKibble );
+    // Place the first piece of kibble
+    meshKibbleFixed = new THREE.Mesh( geometryKibble, materialKibble );
+    meshKibbleFixed.rotation.y = 10
+    meshKibbleFixed.position.z = 200
+    meshKibbleFixed.position.x = 15
+    meshKibbleFixed.position.y = 10
 
-    meshKibble2 = new THREE.Mesh( geometryKibble, materialKibble );
-    meshKibble2.rotation.y = 10
-    meshKibble2.position.x = 85
-    meshKibble2.position.y = 15
-    meshKibble2.position.z = 8
-    scene.add( meshKibble2 );
+    // Scatter 50 pieces of kibble in random positions
+    // Be sure not to go beyond the available area.
+    for (var i = 0; i < 50; i ++) {
+      let meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.y = 10
+      meshKibble.position.z = 200;
+      meshKibble.position.x = Math.random() * (1500 - 35) + 35;
+      meshKibble.position.y = Math.random() * (17 - 0) + 0;
+      meshKibble.scale.x = meshKibble.scale.y = meshKibble.scale.z = Math.random() * .3 + 1;
 
-    meshKibble3 = new THREE.Mesh( geometryKibble, materialKibble );
-    meshKibble3.rotation.y = 10
-    meshKibble3.position.x = 185
-    meshKibble3.position.y = 5
-    meshKibble3.position.z = 8
-    scene.add( meshKibble3 );
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
 
-    meshKibble4 = new THREE.Mesh( geometryKibble, materialKibble );
-    meshKibble4.rotation.y = 10
-    meshKibble4.position.x = 285
-    meshKibble4.position.y = 20
-    meshKibble4.position.z = 8
-    scene.add( meshKibble4 );
-
-    meshKibble5 = new THREE.Mesh( geometryKibble, materialKibble );
-    meshKibble5.rotation.y = 10
-    meshKibble5.position.x = 330
-    meshKibble5.position.y = 8
-    meshKibble5.position.z = 8
-    scene.add( meshKibble5 );
+    scene.add( meshKibbleFixed );
   }
 
   animate = () => {
     requestAnimationFrame(this.animate);
 
+    // Emilio moves left by 0.2x every ~16.7 milliseconds.
     mesh.position.x += 0.2;
 
+    // "Gravity"
+    // If Emilio is in the air, move faster while falling to the ground.
+    // Give appearance of jumping quickly by rotating Emilio.
     if (mesh.position.y > 0) {
       mesh.position.x += 0.3;
       mesh.position.y -= 0.2;
@@ -136,30 +141,32 @@ class Test extends Component {
       mesh.rotation.z -= 0.05
     }
 
+    // Once Emilio is in the middle of the screen, make the camera follow him.
+    // Also once past the middle of the screen, make Emilio continue to get small.
     if (mesh.position.x > 0) {
       camera.position.x = mesh.position.x;
+
+      if (mesh.scale.x > 0.2) {
+        mesh.scale.set(
+          mesh.scale.x -= 0.001,
+          mesh.scale.y -= 0.001,
+          mesh.scale.z -= 0.001
+        );
+      }
     }
 
-    document.addEventListener('keydown', event => {
-      if (event.keyCode === 84) {
-        mesh.rotation.z = -1.5
-        // mesh.rotation.x = -0.01
-        mesh.rotation.y = -3.3
-        mesh.rotation.y += 0.05
-      }
-    })
+    renderer.render( scene, camera );
 
+    this.eatKibble(meshKibbleFixed, mesh);
+  
+    for (var i = 0; i < spheres.length; i ++) {
+      this.eatKibble(spheres[i], mesh);
+    }
     renderer.render( scene, camera );
 
     if (mesh.position.y <= 0 && !this.state.emilio.isEating) {
       mesh.material.map = texture;
     }
-
-    this.eatKibble(meshKibble5, mesh);
-    this.eatKibble(meshKibble4, mesh);
-    this.eatKibble(meshKibble3, mesh);
-    this.eatKibble(meshKibble2, mesh);
-    this.eatKibble(meshKibble, mesh);
   }
 
   changePosition = () => {
@@ -171,12 +178,14 @@ class Test extends Component {
   }
 
   eatKibble = (sphereOne, sphereTwo) => {
-    let emilioEats = this.spheresIntersect(
+    emilioEats = this.spheresIntersect(
         sphereOne.geometry.boundingSphere,
         sphereOne.position,
         sphereTwo.geometry.boundingSphere,
         sphereTwo.position,
       );
+    
+      console.log(emilioEats);
 
     if (emilioEats) {
       this.setState({
@@ -202,30 +211,29 @@ class Test extends Component {
       sphereTwo.rotation.z = -1.5;
   
       this.setState({
-        kibbleEaten: this.state.kibbleEaten+1,
+        kibbleEaten: this.state.kibbleEaten + 1,
       })
 
       requestAnimationFrame(() => {
-          if (sphereTwo.material.map === texture) {
-            setTimeout(() => {
-              sphereTwo.material.map = textureOpen
-              sphereTwo.rotation.z += 0.02;
+        if (sphereTwo.material.map === texture) {
+          setTimeout(() => {
+            sphereTwo.material.map = textureOpen
+            sphereTwo.rotation.z += 0.02;
 
-              if (sphereTwo.material.map === textureOpen) {
-                setTimeout(() => {
-                  sphereTwo.material.map = texture
-                  sphereTwo.rotation.z -= 0.02;
-                }, 60);
-              }
-            }, 60);
-          } else {
-            setTimeout(() => {
-              sphereTwo.material.map = texture
-              sphereTwo.rotation.z += 0.02;
-            }, 60);
-          }
+            if (sphereTwo.material.map === textureOpen) {
+              setTimeout(() => {
+                sphereTwo.material.map = texture
+                sphereTwo.rotation.z -= 0.02;
+              }, 60);
+            }
+          }, 60);
+        } else {
+          setTimeout(() => {
+            sphereTwo.material.map = texture
+            sphereTwo.rotation.z += 0.02;
+          }, 60);
         }
-      );
+      });
     }
   }
 
@@ -239,20 +247,43 @@ class Test extends Component {
     return distanceVector(sphere1position, sphere2position) <= (sphere1.radius + sphere2.radius)
   }
 
+  rotateSphere = () => {
+    requestAnimationFrame(this.rotateSphere);
+
+    // mesh.rotation.z = -1.5
+    // mesh.rotation.x = -0.01
+    if (mesh.rotation.y <= 20.6) {
+      isTwirling = true;
+      mesh.rotation.y += 1;
+    }
+    if (mesh.rotation.y === 21.6) {
+      mesh.rotation.y += 2;
+    }
+    if (mesh.rotation.y === 23.6) {
+      mesh.rotation.y -= 3.1;
+    }
+    if (mesh.rotation.y === 20.5) {
+      // mesh.rotation.y = 6.6;
+      isTwirling = false;
+    }
+    console.log(mesh.rotation.y, isTwirling);
+
+    cancelAnimationFrame(this.rotateSphere);
+  }
+
   componentDidMount() {
     this.init();
     this.animate();
 
     document.addEventListener('keydown', event => {
-      console.log(mesh.rotation.y)
       if (event.keyCode === 32) {
-        requestAnimationFrame(this.changePosition);
+        this.changePosition();
       }
-      // if (event.keyCode === 84) {
-      //   if (mesh.rotation.y !== 0) {
-      //     mesh.rotation.z = -1.5
-      //   }
-      // }
+
+      if (event.keyCode === 84) {
+        isTwirling = true;
+        this.rotateSphere();
+      }
     });
 
     window.addEventListener('touchstart', this.changePosition);
@@ -261,7 +292,7 @@ class Test extends Component {
   render() {
     return (
       <div className="container">
-        <div className="note">press the spacebar or tap to jump</div>
+        <div className="note">press the spacebar or tap to jump {this.state.emilio.isEating ? 'active' : 'inactive'}</div>
         <div id="count" className={`${this.state.emilio.isEating ? 'active' : 'inactive'}`}>{ this.state.kibbleEaten }</div>
         <div className="emiliocanvas"></div>
       </div>
