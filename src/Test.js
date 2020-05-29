@@ -6,7 +6,10 @@ let geometry, texture, textureOpen, material, mesh;
 let geometryKibble, textureKibble, materialKibble, meshKibbleFixed, emilioEats;
 let spheres = [];
 
-let isTwirling = true;
+let isTwirling = false,
+    timeTwirling = 0,
+    isEating = false,
+    timeEating = 0;
 
 window.requestAnimationFrame = window.requestAnimationFrame
     || window.mozRequestAnimationFrame
@@ -188,15 +191,20 @@ class Test extends Component {
     if (mesh.position.y <= 0 && !this.state.emilio.isEating) {
       mesh.material.map = texture;
     }
+
+
+    if (isTwirling) {
+      this.twirl();
+    }
   }
 
   eatKibble = (sphereOne) => {
-    emilioEats = this.spheresIntersect(
+    isEating = this.spheresIntersect(
       sphereOne.geometry.boundingSphere,
       sphereOne.position,
     );
 
-    if (emilioEats) {
+    if (isEating) {
       this.setState({
         emilio: {
           isEating: true
@@ -214,36 +222,45 @@ class Test extends Component {
   }
 
   emilioEating = (sphereOne) => {
-    if (this.state.emilio.isEating) {
+    if (isEating) {
+      timeEating = timeEating + 1;
       sphereOne.visible = false;
       mesh.scale.set(mesh.scale.x + 0.01, mesh.scale.y + 0.01, mesh.scale.z + 0.01);
       mesh.rotation.z = -1.5;
   
-      this.setState({
-        kibbleEaten: this.state.kibbleEaten + 1,
-      })
+      if (timeEating >= 1 && timeEating < 10) {
+        this.setState({
+          kibbleEaten: this.state.kibbleEaten + 1,
+        })
+      } else {
+        timeEating = 0;
+      }
 
-      requestAnimationFrame(() => {
-        if (mesh.material.map === texture) {
-          setTimeout(() => {
-            mesh.material.map = textureOpen
-            mesh.rotation.z += 0.02;
+      // requestAnimationFrame(() => {
+      //   if (mesh.material.map === texture) {
+      //     setTimeout(() => {
+      //       mesh.material.map = textureOpen
+      //       mesh.rotation.z += 0.02;
 
-            if (mesh.material.map === textureOpen) {
-              setTimeout(() => {
-                mesh.material.map = texture
-                mesh.rotation.z -= 0.02;
-              }, 60);
-            }
-          }, 60);
-        } else {
-          setTimeout(() => {
-            mesh.material.map = texture
-            mesh.rotation.z += 0.02;
-          }, 60);
-        }
-      });
+      //       if (mesh.material.map === textureOpen) {
+      //         setTimeout(() => {
+      //           mesh.material.map = texture
+      //           mesh.rotation.z -= 0.02;
+      //         }, 60);
+      //       }
+      //     }, 60);
+      //   } else {
+      //     setTimeout(() => {
+      //       mesh.material.map = texture
+      //       mesh.rotation.z += 0.02;
+      //     }, 60);
+      //   }
+      // });
+    } else {
+      // timeEating = 0;
     }
+
+    console.log(timeEating)
   }
 
   spheresIntersect = (sphere1, sphere1position) => {
@@ -256,32 +273,49 @@ class Test extends Component {
     return distanceVector(sphere1position, mesh.position) <= (sphere1.radius + mesh.geometry.boundingSphere.radius)
   }
 
-  rotateSphere = () => {
-    requestAnimationFrame(this.rotateSphere);
+  twirl = () => {
+    let shake = false;
+    timeTwirling += 1;
 
-    let rotator = mesh.rotation.y;
-    // mesh.rotation.z = -1.5
-    // mesh.rotation.x = -0.01
-    if (rotator <= 20.6) {
-      isTwirling = true;
-      mesh.rotation.y += 1;
-      rotator = mesh.rotation.y;
+    if (timeTwirling < 30) {
+      mesh.rotation.y += 0.5;
+
+    } else if (timeTwirling >= 30 && timeTwirling < 60) {
+      mesh.rotation.y = 21.6;
+      mesh.rotation.x = 0.2;
+      mesh.rotation.z = -1.5;
+
+      // if (timeTwirling < 60) {
+      //   shake = true;
+      //   mesh.rotation.z -= 0.02
+      // } else {
+      //   shake = false;
+      //   mesh.rotation.x += 0.02
+      // }
+
+      if (timeTwirling % 10) {
+        shake = true;
+        mesh.rotation.z += 0.2;
+      } else {
+        shake = false;
+        mesh.rotation.z += 0.2;
+      }
+
+
+
+
+    } else if (timeTwirling >= 90 && timeTwirling < 110) {
+      mesh.rotation.y -= 1;
+
+      if (mesh.rotation.y <= 6.6) {
+        isTwirling = false;
+        timeTwirling = 0;
+        mesh.rotation.y = 6.6;
+      }
     }
-    if (mesh.rotation.y === 21.6) {
-      mesh.rotation.y += 2;
-    }
-    if (mesh.rotation.y === 23.6) {
-      mesh.rotation.y -= 3.1;
-    }
-    if (mesh.rotation.y === 20.5) {
-      // mesh.rotation.y = 6.6;
-      mesh.rotation.z = -1.5
-      isTwirling = false;
-    }
-    console.log(mesh.rotation.y, isTwirling);
   }
 
-  changePosition = () => {
+  jump = () => {
     mesh.position.y += 5;
     if (mesh.position.y > 0) {
       mesh.position.y += 2 * -(mesh.position.y * 0.01);
@@ -295,16 +329,15 @@ class Test extends Component {
 
     document.addEventListener('keydown', event => {
       if (event.keyCode === 32) {
-        this.changePosition();
+        this.jump();
       }
 
       if (event.keyCode === 84) {
-        // isTwirling = true;
-        this.rotateSphere();
+        isTwirling = true;
       }
     });
 
-    window.addEventListener('touchstart', this.changePosition);
+    window.addEventListener('touchstart', this.jump);
   }
 
   render() {
