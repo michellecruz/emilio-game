@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
 
 let camera, scene, renderer, canvas;
 let geometry, texture, textureOpen, material, mesh;
@@ -8,7 +9,8 @@ let spheres = [];
 let radius = 100,
     raycaster,
     intersects,
-    cancel;
+    cancel,
+    sky, sunSphere;
 
 let isTwirling = false,
     timeTwirling = 0,
@@ -24,7 +26,7 @@ class Test extends Component {
     height: window.innerHeight,
     kibbleEaten: 0,
     emilio: {
-      isEating: null,
+      isEating: false,
       isTwirling: false,
       position: {
         x: -700,
@@ -33,7 +35,7 @@ class Test extends Component {
       },
       rotation: {
         x: 0, //-0.1,
-        y: 0, //6.6,
+        y: 6.6, //6.6,
         z: 0, //-1.2,
       },
     }
@@ -100,14 +102,14 @@ class Test extends Component {
   }
 
   addKibble = () => {
-    geometryKibble = new THREE.SphereBufferGeometry( 30, 8, 30 );
+    geometryKibble = new THREE.SphereBufferGeometry( 50, 8, 16 );
     materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, transparent: true } );
 
     // Place the first piece of kibble
     meshKibbleFixed = new THREE.Mesh( geometryKibble, materialKibble );
     meshKibbleFixed.position.x = 0 //100
     meshKibbleFixed.position.y = 100 //50
-    meshKibbleFixed.position.z = 0
+    meshKibbleFixed.position.z = 200
     meshKibbleFixed.name = 'Kibble'
 
     scene.add( meshKibbleFixed );
@@ -115,18 +117,18 @@ class Test extends Component {
 
     // Scatter 50 pieces of kibble in random positions
     // Be sure not to go beyond the available area.
-    for (var i = 0; i < 60; i ++) {
+    for (var i = 0; i < 50; i ++) {
       let meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
             
-      meshKibble.position.x = Number((Math.random() * (9000 - 500) + 500).toFixed(0));
+      meshKibble.position.x = Number((Math.random() * (10000 - 500) + 500).toFixed(0));
       meshKibble.position.y = Number((Math.random() * (500 - 0) + 0).toFixed(0));
-      meshKibble.position.z = mesh.position.z;
+      meshKibble.position.z = 200;
       meshKibble.material.map.needsUpdate = true;
       meshKibble.name = 'Kibble'
 
+      spheres.push( meshKibble );
       scene.add( meshKibble );
     }
-
   }
 
   animate = () => {
@@ -135,6 +137,8 @@ class Test extends Component {
 
     // Emilio moves left by 10x every ~16.7 milliseconds.
     mesh.position.x += 10;
+
+    // Have the camera follow Emilio.
     camera.position.x = mesh.position.x;
     camera.lookAt(mesh.position.x, mesh.position.y, 0);
     camera.updateProjectionMatrix();
@@ -173,9 +177,21 @@ class Test extends Component {
       mesh.material.map = texture;
     }
 
+    let kibble;
     // Start tracking if Emilio is eating kibble.
     for (var i = 0; i < spheres.length; i ++) {
+      spheres[i].rotation.x = 0
+      spheres[i].rotation.y = 0
+      spheres[i].position.z = 150
+      // spheres[i].position.y = 0
+
+      mesh.rotation.x = 0
+      // mesh.rotation.y = 0
+      // mesh.rotation.z = 0
+      mesh.position.z = 100
+      
       this.eatKibble(spheres[i]);
+      kibble = spheres[i];
     }
 
     // If Emilio is jumping, run this function. 
@@ -187,9 +203,27 @@ class Test extends Component {
     if (isTwirling) {
       this.twirl();
     }
+
+    if (isEating) {
+      this.eat();
+    }
   }
 
+  // spheresIntersect = (sphere1, sphere1position) => {
+  //   function distanceVector( v1, v2 ) {
+  //       var dx = v1.x - v2.x;
+  //       var dy = v1.y - v2.y;
+  //       return Math.sqrt( dx * dx + dy * dy );
+  //   }
+  //   return distanceVector(sphere1position, mesh.position) <= (sphere1.radius, mesh.geometry.boundingSphere.radius);
+  // }
+
   eatKibble = (kibble) => {
+    // isEating = this.spheresIntersect(
+    //   kibble.geometry.boundingSphere,
+    //   kibble.position,
+    // );
+
     // Use Raycaster to detect intersections.
     raycaster.setFromCamera({
       x: kibble.position.x,
@@ -204,6 +238,7 @@ class Test extends Component {
         
         if (intersects[i].object.name === 'Kibble') {
           intersects[i].object.visible = false;
+          // mesh.position.z = mesh.position.z * 0.1
           // mesh.scale.set(mesh.scale.x + 0.01, mesh.scale.y + 0.01, mesh.scale.z + 0.01);
         }
 
@@ -227,6 +262,10 @@ class Test extends Component {
   }
 
   eat = () => {
+    mesh.rotation.x = -0.2
+    mesh.rotation.y = 6.5
+    mesh.rotation.z = -1.2
+
     requestAnimationFrame(() => {
       if (mesh.material.map === texture) {
         setTimeout(() => {
