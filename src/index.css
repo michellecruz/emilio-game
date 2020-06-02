@@ -51,6 +51,14 @@ canvas {
           animation: inactive 400ms cubic-bezier(0.6, -0.28, 0.735, 0.045);
 }
 
+.mobile #count {
+  bottom: 80px;
+  top: auto;
+  -webkit-transform: rotate(90deg);
+          transform: rotate(90deg);
+  font-size: 80px;
+}
+
 #count.active {
   color: blue;
   -webkit-animation: active 400ms cubic-bezier(0.6, -0.28, 0.735, 0.045);

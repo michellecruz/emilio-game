@@ -5,9 +5,13 @@ import { HorizontalBlurShader } from 'three/examples/jsm/shaders/HorizontalBlurS
 import { VerticalBlurShader } from 'three/examples/jsm/shaders/VerticalBlurShader.js';
 
 let camera, scene, renderer, canvas;
-let geometry, texture, textureOpen, material, mesh, ghost;
-let geometryKibble, textureKibble, materialKibble, meshKibbleFixed;
-let spheres = [];
+let geometry, texture, textureOpen, material, mesh;
+let ghost;
+let geometryKibble, textureKibble, materialKibble, meshKibble, meshKibbleFixed;
+let spheres = [],
+    maxKibbleX,
+    maxKibbleY;
+
 let radius = 100,
     raycaster,
     intersects,
@@ -21,14 +25,16 @@ let isTwirling = false,
     isJumping = false,
     timeJumping = 0;
 
-
-const PLANE_WIDTH = window.innerWidth * 2;
-const PLANE_HEIGHT = window.innerHeight * 2;
-const CAMERA_HEIGHT = 200;
-
+// Shadow Classes
 let shadowGroup, renderTarget, renderTargetBlur, shadowCamera, cameraHelper, depthMaterial, horizontalBlurMaterial, verticalBlurMaterial;
 let plane, blurPlane, fillPlane;
+
+const PLANE_WIDTH = window.innerWidth * 4;
+const PLANE_HEIGHT = window.innerHeight * 4;
+const CAMERA_HEIGHT = 100;
       
+
+
 class Test extends Component {
   state = {
     width: window.innerWidth,
@@ -52,12 +58,13 @@ class Test extends Component {
         z: 0,
       },
       rotation: {
-        x: 0, //-0.1,
+        x: -0.1, //-0.1,
         y: 6.6, //6.6,
         z: 0, //-1.2,
       },
     }
   }
+
 
   init = () => {
     let container = document.querySelector( '.container'),
@@ -70,20 +77,22 @@ class Test extends Component {
     
     // Set up the initial scene
     camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
-    camera.position.set( 0, 0, 2000 );
+    camera.position.set( 0, 400, 2000 );
 
     scene = new THREE.Scene();
-    camera.lookAt( scene.position );
     scene.background = new THREE.Color( 0xffffff )
 
     // Draw Emilio shape & texture
     geometry = new THREE.SphereBufferGeometry( radius, 32, 32 );
     material = new THREE.MeshBasicMaterial( { map: texture } );
+    material.side = THREE.DoubleSide;
     mesh = new THREE.Mesh( geometry, material );
     mesh.name = "Emilio";
+    material.wireframe = true;
 
     // Add a ghost for the camera to follow.
-    ghost = new THREE.Mesh();
+    ghost = new THREE.Mesh( );
+    ghost.visible = false
     goal = new THREE.Object3D();
     ghost.add( goal );
     temp = new THREE.Vector3();
@@ -106,11 +115,13 @@ class Test extends Component {
     scene.add(mesh);
     scene.add(ghost);
   
-    // Scatter the treats!
-    this.addKibble();
-
     // Add the shadow!
     this.addShadow();
+
+    // Scatter the treats!
+    this.addKibble();
+    
+    raycaster = new THREE.Raycaster();
 
     // Draw the canvas.
     renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -128,6 +139,7 @@ class Test extends Component {
       height: canvas.clientHeight,
     })
   }
+
 
   addShadow = () => {
     // the container, if you need to move the plane just move this
@@ -170,8 +182,7 @@ class Test extends Component {
     } );
 
     fillPlane = new THREE.Mesh( planeGeometry, planeMaterial );
-    fillPlane.rotateX( Math.PI );
-    fillPlane.position.y -= 0.00001;
+    fillPlane.rotateX( Math.PI/2 );
     shadowGroup.add( fillPlane );
 
     // the camera to render the depth material from
@@ -204,6 +215,7 @@ class Test extends Component {
     verticalBlurMaterial.depthTest = false;
   }
 
+
   blurShadow = (amount) => {
     blurPlane.visible = true;
 
@@ -226,40 +238,45 @@ class Test extends Component {
     blurPlane.visible = false;
   }
 
+
   addKibble = () => {
-    geometryKibble = new THREE.BoxBufferGeometry( 50, 200, 200 );
+    geometryKibble = new THREE.BoxBufferGeometry( radius*2, radius*2, radius*2 );//new THREE.SphereBufferGeometry( radius, 32, 32 );
     materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, transparent: true } );
+    materialKibble.side = THREE.DoubleSide;
+    // materialKibble.wireframe = true
 
     // Place the first piece of kibble
     meshKibbleFixed = new THREE.Mesh( geometryKibble, materialKibble );
-    meshKibbleFixed.position.x = 0 //100
-    meshKibbleFixed.position.y = 0 //50
+    meshKibbleFixed.position.x = maxKibbleX //100
+    meshKibbleFixed.position.y = maxKibbleY //50
     meshKibbleFixed.name = 'Kibble'
 
     scene.add( meshKibbleFixed );
     spheres.push( meshKibbleFixed );
 
-    // Scatter 50 pieces of kibble in random positions
+    // Scatter 100 pieces of kibble in random positions
     // Be sure not to go beyond the available area.
+    maxKibbleX = (80000 - 2000)
+    maxKibbleY = (800 - 0)
     for (var i = 0; i < 100; i ++) {
-      let meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
-            
-      meshKibble.position.x = Number((Math.random() * (20000 - 500) + 500).toFixed(0));
-      meshKibble.position.y = Number((Math.random() * (400 - 0) + 0).toFixed(0));
-      meshKibble.material.map.needsUpdate = true;
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+
+      meshKibble.position.x = Math.random() * maxKibbleX + 2000;
+      meshKibble.position.y = Math.random() * maxKibbleY + 0;
       meshKibble.name = 'Kibble'
 
-      spheres.push( meshKibble );
       scene.add( meshKibble );
+      spheres.push( meshKibble );
     }
   }
+
 
   animate = () => {
     // This creates the animation.
     requestAnimationFrame(this.animate);
 
     // Emilio moves left by 10x every ~16.7 milliseconds.
-    mesh.position.x += 10;
+    mesh.position.x += 20;
 
     ghost.position.x = mesh.position.x;
     ghost.position.y = mesh.position.y;
@@ -267,13 +284,13 @@ class Test extends Component {
     shadowGroup.position.x = mesh.position.x;
 
     // Make Emilio continue to get smaller up until minimum scale.
-    if (mesh.scale.x > 0.2) {
-      mesh.scale.set(
-        mesh.scale.x -= 0.0005,
-        mesh.scale.y -= 0.0005,
-        mesh.scale.z -= 0.0005
-      );
-    }
+    // if (mesh.scale.x > 0.2) {
+    //   mesh.scale.set(
+    //     mesh.scale.x -= 0.0005,
+    //     mesh.scale.y -= 0.0005,
+    //     mesh.scale.z -= 0.0005
+    //   );
+    // }
 
     // Gravity
     // If Emilio is in the air, move faster while falling to the ground.
@@ -290,7 +307,6 @@ class Test extends Component {
 
     // Rotate Emilio based on his direction
     axis = new THREE.Vector3();
-
     // Axis orthogonal to forward vector
     axis.set( mesh.position.x, mesh.position.y, 0 ).normalize();
     axis.cross( THREE.Object3D.DefaultUp );
@@ -299,11 +315,11 @@ class Test extends Component {
 
     // Have the camera follow Emilio.
     temp.setFromMatrixPosition(goal.matrixWorld);
-    camera.position.lerp(temp, 0.2);
-    // camera.lookAt( ghost.position );
-    camera.lookAt( ghost.position.x, ghost.position.y, spheres[1].position.z );
+    camera.position.lerp(temp, 0.04);
+    camera.lookAt( ghost.position );
+    // camera.lookAt( ghost.position.x, ghost.position.y, spheres[1].position.z );
     camera.updateProjectionMatrix();
-  
+
 
     // SHADOW
     // remove the background
@@ -340,16 +356,15 @@ class Test extends Component {
 
     // Start tracking if Emilio is eating kibble.
     for (var i = 0; i < spheres.length; i ++) {
-      spheres[i].rotation.x = 0
-      spheres[i].rotation.y = 0
-      spheres[i].rotation.y = mesh.rotation.y
-      spheres[i].position.z = 150
-      // spheres[i].position.y = 0
+      // spheres[i].rotation.x = 0
+      // spheres[i].rotation.y = 0
+      // spheres[i].rotation.y = mesh.rotation.y
+      // spheres[i].position.y = 120
+      // spheres[i].position.z = 100
 
-      mesh.position.z = 100
-      
-      this.eatKibble(spheres[i]);
+      // mesh.position.z = 100
     }
+    this.eatKibble();
 
     // If Emilio is jumping, run this function. 
     if (isJumping) {
@@ -367,35 +382,33 @@ class Test extends Component {
 
     // Render the screen.
     renderer.render( scene, camera );
+    camera.updateProjectionMatrix();
   }
 
-  eatKibble = (kibble) => {
+
+  eatKibble = () => {
     // Use Raycaster to detect intersections.
-    raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera({
-      x: kibble.position.x,
-      y: 0
-    }, camera)
+    raycaster.set(
+      mesh.position,
+      new THREE.Vector3(-1, 1, 0),
+    )
 
-    intersects = raycaster.intersectObjects( scene.children );
-
+    intersects = raycaster.intersectObjects( spheres );
+    
     for ( let i = 0; i < intersects.length; i++ ) {
-      if (intersects.length > 1) {
-        isEating = true;
-        
+      if (intersects.length > 0) {
         if (intersects[i].object.name === 'Kibble') {
+          isEating = true;
           intersects[i].object.visible = false;
-          mesh.scale.set(mesh.scale.x + 0.01, mesh.scale.y + 0.01, mesh.scale.z + 0.01);
-          mesh.position.z = mesh.position.z * mesh.scale;
-          // mesh.position.y = 0;
-        }
+          // mesh.scale.set(mesh.scale.x + 0.01, mesh.scale.y + 0.01, mesh.scale.z + 0.01);
 
-        this.setState({
-          emilio: {
-            isEating: true
-          },
-          kibbleEaten: this.state.kibbleEaten + 1,
-        })
+          this.setState({
+            emilio: {
+              isEating: true
+            },
+            kibbleEaten: this.state.kibbleEaten + 1,
+          })
+        }
       } else {
         isEating = false;
 
@@ -407,6 +420,7 @@ class Test extends Component {
       }
     }
   }
+
 
   eat = () => {
     mesh.rotation.x = -0.2
@@ -431,6 +445,7 @@ class Test extends Component {
       }
     });
   }
+
 
   twirl = () => {
     timeTwirling += 1;
@@ -470,9 +485,9 @@ class Test extends Component {
           timeTwirling = 0;
         }
       }
-      console.log(mesh.rotation.y)
     }
   }
+
 
   jump = () => {
     timeJumping += timeJumping + 1;
@@ -487,14 +502,16 @@ class Test extends Component {
     }
   }
 
+
   rotateCamera = () => {
     if (this.state.width < this.state.height) {
       camera.up = new THREE.Vector3(-1,0,0);
       camera.updateProjectionMatrix();
 
-
+      document.body.classList.add('mobile');
     }
   }
+
 
   componentDidMount() {
     this.init();
@@ -516,6 +533,7 @@ class Test extends Component {
     });
   }
 
+
   render() {
     return (
       <div className="container">
@@ -526,5 +544,6 @@ class Test extends Component {
     );
   }
 }
+
 
 export default Test;
