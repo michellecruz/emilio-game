@@ -6,15 +6,14 @@ import { VerticalBlurShader } from 'three/examples/jsm/shaders/VerticalBlurShade
 
 let camera, scene, renderer, canvas;
 let geometry, texture, textureOpen, material, mesh;
-let ghost;
-let geometryKibble, textureKibble, materialKibble, meshKibble, meshKibbleFixed;
-let spheres = [],
-    maxKibbleX,
-    maxKibbleY;
+
+let geometryKibble, textureKibble, materialKibble, meshKibble;
+let spheres = [];
 
 let radius = 100,
     raycaster,
     intersects,
+    ghost,
     goal,
     temp,
     axis;
@@ -25,15 +24,14 @@ let isTwirling = false,
     isJumping = false,
     timeJumping = 0;
 
-// Shadow Classes
+// Shadow Variables
 let shadowGroup, renderTarget, renderTargetBlur, shadowCamera, cameraHelper, depthMaterial, horizontalBlurMaterial, verticalBlurMaterial;
 let plane, blurPlane, fillPlane;
 
-const PLANE_WIDTH = window.innerWidth * 4;
-const PLANE_HEIGHT = window.innerHeight * 4;
-const CAMERA_HEIGHT = 100;
+let PLANE_WIDTH = window.innerWidth * 4,
+    PLANE_HEIGHT = window.innerHeight * 4,
+    CAMERA_HEIGHT = 500;
       
-
 
 class Test extends Component {
   state = {
@@ -58,8 +56,8 @@ class Test extends Component {
         z: 0,
       },
       rotation: {
-        x: -0.1, //-0.1,
-        y: 6.6, //6.6,
+        x: 0, //-0.1,
+        y: 6.5, //6.6,
         z: 0, //-1.2,
       },
     }
@@ -88,7 +86,6 @@ class Test extends Component {
     material.side = THREE.DoubleSide;
     mesh = new THREE.Mesh( geometry, material );
     mesh.name = "Emilio";
-    material.wireframe = true;
 
     // Add a ghost for the camera to follow.
     ghost = new THREE.Mesh( );
@@ -96,7 +93,7 @@ class Test extends Component {
     goal = new THREE.Object3D();
     ghost.add( goal );
     temp = new THREE.Vector3();
-    goal.position.set( 0, 400, 2000 );
+    goal.position.set( 0, 0, 2000 );
 
     // Set Emilio's initial position
     mesh.position.x = this.state.emilio.position.x
@@ -222,7 +219,7 @@ class Test extends Component {
     // blur horizontally and draw in the renderTargetBlur
     blurPlane.material = horizontalBlurMaterial;
     blurPlane.material.uniforms.tDiffuse.value = renderTarget.texture;
-    horizontalBlurMaterial.uniforms.h.value = amount * 1 / 256; //256
+    horizontalBlurMaterial.uniforms.h.value = amount * 1 / this.state.width*2; //256
 
     renderer.setRenderTarget( renderTargetBlur );
     renderer.render( blurPlane, shadowCamera );
@@ -230,7 +227,7 @@ class Test extends Component {
     // blur vertically and draw in the main renderTarget
     blurPlane.material = verticalBlurMaterial;
     blurPlane.material.uniforms.tDiffuse.value = renderTargetBlur.texture;
-    verticalBlurMaterial.uniforms.v.value = amount * 1 / 256; //256
+    verticalBlurMaterial.uniforms.v.value = amount * 1 / this.state.height*2; //256
 
     renderer.setRenderTarget( renderTarget );
     renderer.render( blurPlane, shadowCamera );
@@ -240,29 +237,27 @@ class Test extends Component {
 
 
   addKibble = () => {
-    geometryKibble = new THREE.BoxBufferGeometry( radius*2, radius*2, radius*2 );//new THREE.SphereBufferGeometry( radius, 32, 32 );
+    // new THREE.BoxBufferGeometry( radius*2, radius*2, radius*2 );
+    geometryKibble = new THREE.CylinderBufferGeometry( radius, radius, radius*2, radius*2 ) //new THREE.SphereBufferGeometry( radius, 32, 32 );
     materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, transparent: true } );
     materialKibble.side = THREE.DoubleSide;
-    // materialKibble.wireframe = true
-
-    // Place the first piece of kibble
-    meshKibbleFixed = new THREE.Mesh( geometryKibble, materialKibble );
-    meshKibbleFixed.position.x = maxKibbleX //100
-    meshKibbleFixed.position.y = maxKibbleY //50
-    meshKibbleFixed.name = 'Kibble'
-
-    scene.add( meshKibbleFixed );
-    spheres.push( meshKibbleFixed );
 
     // Scatter 100 pieces of kibble in random positions
     // Be sure not to go beyond the available area.
-    maxKibbleX = (80000 - 2000)
-    maxKibbleY = (800 - 0)
-    for (var i = 0; i < 100; i ++) {
+    for (var i = 0; i < 200; i ++) {
       meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
 
-      meshKibble.position.x = Math.random() * maxKibbleX + 2000;
-      meshKibble.position.y = Math.random() * maxKibbleY + 0;
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = Math.random() * (80000 - 2000) + 2000;
+      meshKibble.position.y = Math.random() * (1000 - 0) + 0;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
       meshKibble.name = 'Kibble'
 
       scene.add( meshKibble );
@@ -276,7 +271,7 @@ class Test extends Component {
     requestAnimationFrame(this.animate);
 
     // Emilio moves left by 10x every ~16.7 milliseconds.
-    mesh.position.x += 20;
+    mesh.position.x += 25;
 
     ghost.position.x = mesh.position.x;
     ghost.position.y = mesh.position.y;
@@ -296,7 +291,7 @@ class Test extends Component {
     // If Emilio is in the air, move faster while falling to the ground.
     if (mesh.position.y > 10) {
       mesh.position.x += 1 * (mesh.position.y * 0.05) * Math.sin(1);
-      mesh.position.y -= 10 * Math.sin(1);
+      mesh.position.y -= 10;
 
       if (!isEating) {
         mesh.material.map = textureOpen;
@@ -315,7 +310,7 @@ class Test extends Component {
 
     // Have the camera follow Emilio.
     temp.setFromMatrixPosition(goal.matrixWorld);
-    camera.position.lerp(temp, 0.04);
+    camera.position.lerp(temp, 0.4);
     camera.lookAt( ghost.position );
     // camera.lookAt( ghost.position.x, ghost.position.y, spheres[1].position.z );
     camera.updateProjectionMatrix();
@@ -355,15 +350,6 @@ class Test extends Component {
     }
 
     // Start tracking if Emilio is eating kibble.
-    for (var i = 0; i < spheres.length; i ++) {
-      // spheres[i].rotation.x = 0
-      // spheres[i].rotation.y = 0
-      // spheres[i].rotation.y = mesh.rotation.y
-      // spheres[i].position.y = 120
-      // spheres[i].position.z = 100
-
-      // mesh.position.z = 100
-    }
     this.eatKibble();
 
     // If Emilio is jumping, run this function. 
@@ -377,7 +363,7 @@ class Test extends Component {
     }
 
     if (isEating) {
-      // this.eat();
+      this.eat();
     }
 
     // Render the screen.
@@ -389,34 +375,46 @@ class Test extends Component {
   eatKibble = () => {
     // Use Raycaster to detect intersections.
     raycaster.set(
-      mesh.position,
-      new THREE.Vector3(-1, 1, 0),
+      mesh.position, // origin
+      new THREE.Vector3(-1, 1, 0), // direction
     )
 
+    mesh.geometry.computeBoundingBox();
+
     intersects = raycaster.intersectObjects( spheres );
-    
+    isEating = false
+    if (intersects.length > 0) {
+      isEating = true
+
+      this.setState({
+        emilio: {
+          isEating: true
+        },
+        kibbleEaten: this.state.kibbleEaten + 1,
+      })
+    } else {
+      isEating = false
+      this.setState({
+        emilio: {
+          isEating: false
+        }
+      })
+    }
+
     for ( let i = 0; i < intersects.length; i++ ) {
       if (intersects.length > 0) {
         if (intersects[i].object.name === 'Kibble') {
-          isEating = true;
           intersects[i].object.visible = false;
-          // mesh.scale.set(mesh.scale.x + 0.01, mesh.scale.y + 0.01, mesh.scale.z + 0.01);
 
-          this.setState({
-            emilio: {
-              isEating: true
-            },
-            kibbleEaten: this.state.kibbleEaten + 1,
-          })
+          // if (mesh.scale.x < 2) {
+          //   mesh.scale.set(
+          //     mesh.scale.x + 0.01,
+          //     mesh.scale.y + 0.01,
+          //     mesh.scale.z + 0.01
+          //   );
+          //   mesh.geometry.computeBoundingSphere()
+          // }
         }
-      } else {
-        isEating = false;
-
-        this.setState({
-          emilio: {
-            isEating: false
-          }
-        })
       }
     }
   }
@@ -491,20 +489,35 @@ class Test extends Component {
 
   jump = () => {
     timeJumping += timeJumping + 1;
-
+    
     if (timeJumping <= 150) {
       if (mesh.position.y < 4000) {
-        mesh.position.y += 30;
+        mesh.position.y += 30 + Math.sin(timeJumping)*2;
       }
     } else {
       isJumping = false;
       timeJumping = 0;
     }
+
+    // if (mesh.position.y < 4000) {
+    //   if (mesh.position.y < 100) {
+    //     for (let i = 0; i <= 60; i++) {
+    //         mesh.position.y += 30;
+    //     }
+    //   }
+    // } else {
+    //   isJumping = false;
+    //   timeJumping = 0;
+    // }
   }
 
 
   rotateCamera = () => {
     if (this.state.width < this.state.height) {
+      PLANE_HEIGHT = window.innerWidth * 4;
+      PLANE_WIDTH = window.innerHeight * 4;
+      CAMERA_HEIGHT = 500;
+
       camera.up = new THREE.Vector3(-1,0,0);
       camera.updateProjectionMatrix();
 
