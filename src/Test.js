@@ -16,10 +16,12 @@ let radius = 100,
     ghost,
     goal,
     temp,
-    axis;
+    axis,
+    velocity = 1;
 
 let isTwirling = false,
     timeTwirling = 0,
+    timeTwirlingBack = 0,
     isEating = false,
     isJumping = false,
     timeJumping = 0;
@@ -35,6 +37,7 @@ let PLANE_WIDTH = window.innerWidth * 4,
 
 class Test extends Component {
   state = {
+    timeElapsed: 0,
     width: window.innerWidth,
     height: window.innerHeight,
     shadow: {
@@ -49,7 +52,7 @@ class Test extends Component {
     kibbleEaten: 0,
     emilio: {
       isEating: false,
-      isTwirling: false,
+      isTwirling: null,
       position: {
         x: -700,
         y: 500,
@@ -270,28 +273,37 @@ class Test extends Component {
     // This creates the animation.
     requestAnimationFrame(this.animate);
 
+    // Count seconds.
+    this.setState({
+      timeElapsed: this.state.timeElapsed + 1
+    })
+
     // Emilio moves left by 10x every ~16.7 milliseconds.
-    mesh.position.x += 25;
+    // mesh.position.x += 20;
 
     ghost.position.x = mesh.position.x;
     ghost.position.y = mesh.position.y;
 
     shadowGroup.position.x = mesh.position.x;
 
-    // Make Emilio continue to get smaller up until minimum scale.
-    // if (mesh.scale.x > 0.2) {
-    //   mesh.scale.set(
-    //     mesh.scale.x -= 0.0005,
-    //     mesh.scale.y -= 0.0005,
-    //     mesh.scale.z -= 0.0005
-    //   );
-    // }
+    // Physics/Gravity
+    // Make Emilio faster after he passes 100 kibble
+    if (this.state.kibbleEaten >= 99 &&
+      this.state.kibbleEaten <= 399) {
+      mesh.position.x += 30;
+      velocity = 1.1
+    } else if (this.state.kibbleEaten > 399) {
+      mesh.position.x += 40;
+      velocity = 1.2
+    } else {
+      mesh.position.x += 20;
+    }
 
-    // Gravity
     // If Emilio is in the air, move faster while falling to the ground.
     if (mesh.position.y > 10) {
-      mesh.position.x += 1 * (mesh.position.y * 0.05) * Math.sin(1);
-      mesh.position.y -= 10;
+      if (!isJumping) {
+        mesh.position.y -= 10
+      }
 
       if (!isEating) {
         mesh.material.map = textureOpen;
@@ -305,7 +317,7 @@ class Test extends Component {
     // Axis orthogonal to forward vector
     axis.set( mesh.position.x, mesh.position.y, 0 ).normalize();
     axis.cross( THREE.Object3D.DefaultUp );
-    mesh.rotateOnAxis( axis, -0.05 );
+    mesh.rotateOnAxis( axis, -0.05*velocity );
 
 
     // Have the camera follow Emilio.
@@ -357,11 +369,17 @@ class Test extends Component {
       this.jump();
     }
 
-    // If Emilio is twirling, run this function.
+    // This function contains logic for Emilio turning around.
     if (isTwirling) {
-      this.twirl();
+      timeTwirlingBack = 0;
+      timeTwirling += 1;
+    } else {
+      timeTwirling = 0;
+      timeTwirlingBack += 1;
     }
+    this.twirl();
 
+    // If Emilio is eating, run this function.
     if (isEating) {
       this.eat();
     }
@@ -421,10 +439,13 @@ class Test extends Component {
 
 
   eat = () => {
-    mesh.rotation.x = -0.2
-    mesh.rotation.y = 6.5
-    mesh.rotation.z = -1.2
+    if (!isTwirling) {
+      mesh.rotation.x = -0.2
+      mesh.rotation.y = 6.5
+      mesh.rotation.z = -1.2
+    }
 
+    // TODO: Rewrite without using setTimeout!
     requestAnimationFrame(() => {
       if (mesh.material.map === texture) {
         setTimeout(() => {
@@ -446,43 +467,21 @@ class Test extends Component {
 
 
   twirl = () => {
-    timeTwirling += 1;
-    // mesh.rotation.y = 0
-
-    if (timeTwirling < 110) {
-      if (timeTwirling < 30) {
+    switch (isTwirling) {
+      case true:
         mesh.rotation.z = -1.2;
         mesh.rotation.x = -0.1;
+        mesh.rotation.y = timeTwirling;
 
-        let max = 30;
-        for (let i = 0; i < max; i++) {
-          mesh.rotation.y += 1;
+        if (mesh.rotation.y >= 34) {
+          mesh.rotation.y = 34.4
         }
-
-      } else if (timeTwirling >= 30 && timeTwirling < 70) {
-        // mesh.rotateOnAxis( axis, 0.9 );
-        if (timeTwirling >= 35 && timeTwirling < 40) {
-          mesh.material.map = textureOpen
-        } else if (timeTwirling >= 45 && timeTwirling < 50) {
-          mesh.material.map = texture
-        } else if (timeTwirling >= 50 && timeTwirling < 55) {
-          mesh.material.map = textureOpen
-        } else if (timeTwirling >= 55 && timeTwirling < 60) {
-          mesh.material.map = texture
-        } else if (timeTwirling >= 60 && timeTwirling < 65) {
-          mesh.material.map = textureOpen
-        } else {
-          mesh.material.map = texture
-        }
-
-      } else if (timeTwirling >= 70 && timeTwirling < 110) {
-        // mesh.rotation.y -= 1;
-
-        if (mesh.rotation.y <= 6.6) {
-          isTwirling = false;
-          timeTwirling = 0;
-        }
-      }
+        break
+      case false:
+        mesh.rotation.x = 0;
+        mesh.rotation.y = 6.5
+        break
+      default:
     }
   }
 
@@ -498,17 +497,6 @@ class Test extends Component {
       isJumping = false;
       timeJumping = 0;
     }
-
-    // if (mesh.position.y < 4000) {
-    //   if (mesh.position.y < 100) {
-    //     for (let i = 0; i <= 60; i++) {
-    //         mesh.position.y += 30;
-    //     }
-    //   }
-    // } else {
-    //   isJumping = false;
-    //   timeJumping = 0;
-    // }
   }
 
 
@@ -537,7 +525,14 @@ class Test extends Component {
       }
 
       if (event.keyCode === 84) {
-        isTwirling = true;
+        switch (isTwirling) {
+          case false:
+            isTwirling = true
+            break
+          case true:
+            isTwirling = false
+            break
+        }
       }
     });
 
