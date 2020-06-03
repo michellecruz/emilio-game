@@ -10,6 +10,9 @@ let geometry, texture, textureOpen, material, mesh;
 let geometryKibble, textureKibble, materialKibble, meshKibble;
 let spheres = [];
 
+let kibbleIDs = [],
+    kibbleID;
+
 let radius = 100,
     raycaster,
     intersects,
@@ -17,11 +20,10 @@ let radius = 100,
     goal,
     temp,
     axis,
-    velocity = 1;
+    velocity = 1.4;
 
 let isTwirling = false,
     timeTwirling = 0,
-    timeTwirlingBack = 0,
     isEating = false,
     isJumping = false,
     timeJumping = 0;
@@ -141,6 +143,128 @@ class Test extends Component {
   }
 
 
+  animate = () => {
+    // This creates the animation.
+    requestAnimationFrame(this.animate);
+
+    // Count seconds.
+    this.setState({
+      timeElapsed: this.state.timeElapsed + 1
+    })
+
+    // Emilio moves left by 10x every ~16.7 milliseconds.
+
+    ghost.position.x = mesh.position.x;
+    ghost.position.y = mesh.position.y;
+
+    shadowGroup.position.x = mesh.position.x;
+
+    // Physics/Gravity
+    // Make Emilio faster after he passes 100 kibble
+    if (this.state.kibbleEaten >= 99 &&
+        this.state.kibbleEaten <= 499) {
+      mesh.position.x += 30;
+      velocity = 1.8
+    } else if (this.state.kibbleEaten > 499 &&
+        this.state.kibbleEaten <= 999) {
+      mesh.position.x += 40;
+      velocity = 2.2
+    } else if (this.state.kibbleEaten > 999) {
+      mesh.position.x += 70;
+      velocity = 2.6
+    } else {
+      mesh.position.x += 20;
+    }
+
+    // If Emilio is in the air, move faster while falling to the ground.
+    if (mesh.position.y > 10) {
+      if (!isJumping) {
+        mesh.position.y -= 10
+      }
+
+      if (!isEating) {
+        mesh.material.map = textureOpen;
+      }
+    } else {
+      mesh.position.y = 0;
+    }
+
+    // Rotate Emilio based on his direction
+    axis = new THREE.Vector3();
+    // Axis orthogonal to forward vector
+    axis.set( mesh.position.x, mesh.position.y, 0 ).normalize();
+    axis.cross( THREE.Object3D.DefaultUp );
+    mesh.rotateOnAxis( axis, -0.05*velocity );
+
+
+    // Have the camera follow Emilio.
+    temp.setFromMatrixPosition(goal.matrixWorld);
+    camera.position.lerp(temp, 0.4);
+    camera.lookAt( ghost.position );
+    // camera.lookAt( ghost.position.x, ghost.position.y, spheres[1].position.z );
+    camera.updateProjectionMatrix();
+
+
+    // SHADOW
+    // remove the background
+    let initialBackground = scene.background;
+    scene.background = null;
+
+    // force the depthMaterial to everything
+    cameraHelper.visible = false;
+    scene.overrideMaterial = depthMaterial;
+
+    // render to the render target to get the depths
+    renderer.setRenderTarget( renderTarget );
+    renderer.render( scene, shadowCamera );
+
+    // and reset the override material
+    scene.overrideMaterial = null;
+    cameraHelper.visible = true;
+
+    this.blurShadow( this.state.shadow.blur );
+
+    // a second pass to reduce the artifacts
+    // (0.4 is the minimum blur amout so that the artifacts are gone)
+    this.blurShadow( this.state.shadow.blur * 0.4 );
+
+    // reset and render the normal scene
+    renderer.setRenderTarget( null );
+    scene.background = initialBackground;
+
+    // If Emilio is on the ground and is not eating,
+    // close his mouth.
+    if (mesh.position.y <= 0 && !isEating) {
+      mesh.material.map = texture;
+    }
+
+    // Start tracking if Emilio is eating kibble.
+    this.eatKibble();
+
+    // If Emilio is jumping, run this function. 
+    if (isJumping) {
+      this.jump();
+    }
+
+    // This function contains logic for Emilio turning around.
+    if (isTwirling) {
+      timeTwirling += 1;
+    } else {
+      timeTwirling = 0;
+    }
+    this.twirl();
+
+    // If Emilio is eating, run this function.
+    if (isEating) {
+      this.eat();
+    }
+
+    // Render the screen.
+    renderer.render( scene, camera );
+    camera.updateProjectionMatrix();
+  }
+
+
   addShadow = () => {
     // the container, if you need to move the plane just move this
     shadowGroup = new THREE.Group();
@@ -247,14 +371,76 @@ class Test extends Component {
 
     // Scatter 100 pieces of kibble in random positions
     // Be sure not to go beyond the available area.
-    for (var i = 0; i < 200; i ++) {
+    for (var i = 0; i < 100; i ++) {
       meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
       meshKibble.rotation.x = mesh.rotation.x
 
       meshKibble.rotation.y = mesh.rotation.y
       meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = Math.random() * (80000 - 2000) + 2000;
-      meshKibble.position.y = Math.random() * (1000 - 0) + 0;
+      // meshKibble.position.x = Math.random() * (80000 - 2000) + 2000;
+      meshKibble.position.x = 1000 + 400 * i
+      // meshKibble.position.y = Math.random() * (1000 - 0) + 0;
+      meshKibble.position.y = Math.abs(Math.sin(0.3 * i) * (1000 - 0) + 0);
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (var i = 0; i < 20; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 5000 + 200 * i
+      meshKibble.position.y = 3000;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (var i = 0; i < 20; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 5000 + 200 * i
+      meshKibble.position.y = 3250;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (var i = 0; i < 20; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 5000 + 200 * i
+      meshKibble.position.y = 3500;
       meshKibble.scale.set(
         meshKibble.scale.x = meshKibble.scale.x * 0.8,
         meshKibble.scale.y = meshKibble.scale.y * 0.8,
@@ -267,128 +453,7 @@ class Test extends Component {
       spheres.push( meshKibble );
     }
   }
-
-
-  animate = () => {
-    // This creates the animation.
-    requestAnimationFrame(this.animate);
-
-    // Count seconds.
-    this.setState({
-      timeElapsed: this.state.timeElapsed + 1
-    })
-
-    // Emilio moves left by 10x every ~16.7 milliseconds.
-    // mesh.position.x += 20;
-
-    ghost.position.x = mesh.position.x;
-    ghost.position.y = mesh.position.y;
-
-    shadowGroup.position.x = mesh.position.x;
-
-    // Physics/Gravity
-    // Make Emilio faster after he passes 100 kibble
-    if (this.state.kibbleEaten >= 99 &&
-      this.state.kibbleEaten <= 399) {
-      mesh.position.x += 30;
-      velocity = 1.1
-    } else if (this.state.kibbleEaten > 399) {
-      mesh.position.x += 40;
-      velocity = 1.2
-    } else {
-      mesh.position.x += 20;
-    }
-
-    // If Emilio is in the air, move faster while falling to the ground.
-    if (mesh.position.y > 10) {
-      if (!isJumping) {
-        mesh.position.y -= 10
-      }
-
-      if (!isEating) {
-        mesh.material.map = textureOpen;
-      }
-    } else {
-      mesh.position.y = 0;
-    }
-
-    // Rotate Emilio based on his direction
-    axis = new THREE.Vector3();
-    // Axis orthogonal to forward vector
-    axis.set( mesh.position.x, mesh.position.y, 0 ).normalize();
-    axis.cross( THREE.Object3D.DefaultUp );
-    mesh.rotateOnAxis( axis, -0.05*velocity );
-
-
-    // Have the camera follow Emilio.
-    temp.setFromMatrixPosition(goal.matrixWorld);
-    camera.position.lerp(temp, 0.4);
-    camera.lookAt( ghost.position );
-    // camera.lookAt( ghost.position.x, ghost.position.y, spheres[1].position.z );
-    camera.updateProjectionMatrix();
-
-
-    // SHADOW
-    // remove the background
-    let initialBackground = scene.background;
-    scene.background = null;
-
-    // force the depthMaterial to everything
-    cameraHelper.visible = false;
-    scene.overrideMaterial = depthMaterial;
-
-    // render to the render target to get the depths
-    renderer.setRenderTarget( renderTarget );
-    renderer.render( scene, shadowCamera );
-
-    // and reset the override material
-    scene.overrideMaterial = null;
-    cameraHelper.visible = true;
-
-    this.blurShadow( this.state.shadow.blur );
-
-    // a second pass to reduce the artifacts
-    // (0.4 is the minimum blur amout so that the artifacts are gone)
-    this.blurShadow( this.state.shadow.blur * 0.4 );
-
-    // reset and render the normal scene
-    renderer.setRenderTarget( null );
-    scene.background = initialBackground;
-
-    // If Emilio is on the ground and is not eating,
-    // close his mouth.
-    if (mesh.position.y <= 0 && !isEating) {
-      mesh.material.map = texture;
-    }
-
-    // Start tracking if Emilio is eating kibble.
-    this.eatKibble();
-
-    // If Emilio is jumping, run this function. 
-    if (isJumping) {
-      this.jump();
-    }
-
-    // This function contains logic for Emilio turning around.
-    if (isTwirling) {
-      timeTwirlingBack = 0;
-      timeTwirling += 1;
-    } else {
-      timeTwirling = 0;
-      timeTwirlingBack += 1;
-    }
-    this.twirl();
-
-    // If Emilio is eating, run this function.
-    if (isEating) {
-      this.eat();
-    }
-
-    // Render the screen.
-    renderer.render( scene, camera );
-    camera.updateProjectionMatrix();
-  }
-
+  
 
   eatKibble = () => {
     // Use Raycaster to detect intersections.
@@ -401,15 +466,23 @@ class Test extends Component {
 
     intersects = raycaster.intersectObjects( spheres );
     isEating = false
+
     if (intersects.length > 0) {
       isEating = true
 
-      this.setState({
-        emilio: {
-          isEating: true
-        },
-        kibbleEaten: this.state.kibbleEaten + 1,
-      })
+      kibbleID = intersects[0].object.uuid
+      if (!kibbleIDs.includes(kibbleID)) {
+        kibbleIDs.push( kibbleID )
+
+        for (let i = 0; i < 10; i ++) {
+          this.setState({
+            emilio: {
+              isEating: true
+            },
+            kibbleEaten: this.state.kibbleEaten + 1,
+          })
+        }
+      }
     } else {
       isEating = false
       this.setState({
@@ -418,6 +491,7 @@ class Test extends Component {
         }
       })
     }
+    console.log(kibbleIDs)
 
     for ( let i = 0; i < intersects.length; i++ ) {
       if (intersects.length > 0) {
