@@ -161,15 +161,15 @@ class Test extends Component {
 
     // Physics/Gravity
     // Make Emilio faster after he passes 100 kibble
-    if (this.state.kibbleEaten >= 99 &&
-        this.state.kibbleEaten <= 499) {
+    if (this.state.kibbleEaten >= 49 &&
+        this.state.kibbleEaten <= 299) {
       mesh.position.x += 30;
       velocity = 1.8
-    } else if (this.state.kibbleEaten > 499 &&
-        this.state.kibbleEaten <= 999) {
+    } else if (this.state.kibbleEaten > 299 &&
+        this.state.kibbleEaten <= 599) {
       mesh.position.x += 40;
       velocity = 2.2
-    } else if (this.state.kibbleEaten > 999) {
+    } else if (this.state.kibbleEaten > 599) {
       mesh.position.x += 70;
       velocity = 2.6
     } else {
@@ -369,8 +369,30 @@ class Test extends Component {
     materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, transparent: true } );
     materialKibble.side = THREE.DoubleSide;
 
+    
     // Scatter 100 pieces of kibble in random positions
     // Be sure not to go beyond the available area.
+    for (var i = 0; i < 2; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 100 + 400 * i
+      meshKibble.position.y = 0;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+
     for (var i = 0; i < 100; i ++) {
       meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
       meshKibble.rotation.x = mesh.rotation.x
@@ -378,7 +400,7 @@ class Test extends Component {
       meshKibble.rotation.y = mesh.rotation.y
       meshKibble.rotation.z = mesh.rotation.z
       // meshKibble.position.x = Math.random() * (80000 - 2000) + 2000;
-      meshKibble.position.x = 1000 + 400 * i
+      meshKibble.position.x = 1000 + 300 * i
       // meshKibble.position.y = Math.random() * (1000 - 0) + 0;
       meshKibble.position.y = Math.abs(Math.sin(0.3 * i) * (1000 - 0) + 0);
       meshKibble.scale.set(
@@ -399,8 +421,8 @@ class Test extends Component {
 
       meshKibble.rotation.y = mesh.rotation.y
       meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = 5000 + 200 * i
-      meshKibble.position.y = 3000;
+      meshKibble.position.x = 31700 + 200 * i
+      meshKibble.position.y = 2200;
       meshKibble.scale.set(
         meshKibble.scale.x = meshKibble.scale.x * 0.8,
         meshKibble.scale.y = meshKibble.scale.y * 0.8,
@@ -419,8 +441,8 @@ class Test extends Component {
 
       meshKibble.rotation.y = mesh.rotation.y
       meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = 5000 + 200 * i
-      meshKibble.position.y = 3250;
+      meshKibble.position.x = 31700 + 200 * i
+      meshKibble.position.y = 2450;
       meshKibble.scale.set(
         meshKibble.scale.x = meshKibble.scale.x * 0.8,
         meshKibble.scale.y = meshKibble.scale.y * 0.8,
@@ -439,8 +461,8 @@ class Test extends Component {
 
       meshKibble.rotation.y = mesh.rotation.y
       meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = 5000 + 200 * i
-      meshKibble.position.y = 3500;
+      meshKibble.position.x = 31700 + 200 * i
+      meshKibble.position.y = 2700;
       meshKibble.scale.set(
         meshKibble.scale.x = meshKibble.scale.x * 0.8,
         meshKibble.scale.y = meshKibble.scale.y * 0.8,
@@ -452,6 +474,28 @@ class Test extends Component {
       scene.add( meshKibble );
       spheres.push( meshKibble );
     }
+
+    for (var i = 0; i < 800; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = Math.random() * (200000 - 30700) + 30700;
+      meshKibble.position.y = Math.random() * (1500 - 0) + 0;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    
   }
   
 
