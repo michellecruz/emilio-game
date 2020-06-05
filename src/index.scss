@@ -26,31 +26,55 @@ canvas {
   height: 100vh;
 }
 
+.desktop {
+  display: block;
+
+  .mobile & {
+    display: none;
+  }
+}
+
+.mobile-div {
+  display: none;
+
+  .mobile & {
+    display: block;
+  }
+}
+
 .note {
   position: fixed;
   bottom: 10px;
   left: 15px;
   color:black;
-  opacity: 0.5;
-  font-size: 12px;
+  opacity: 1;
+  font-size: 14px;
   font-weight: bold;
+
+  .mobile & {
+    bottom: auto;
+    left: 0;
+    top: 15px;
+    transform: rotate(90deg) translate(50%, 50%);
+  }
 }
 
 #count {
   position: fixed;
   top: 0;
-  right: 5vw;
+  right: 3vw;
   font-weight: bold;
-  font-size: 20vw;
+  font-size: 8vw;
   will-change: color;
   color: black;
   animation: inactive 400ms cubic-bezier(0.6, -0.28, 0.735, 0.045);
 
   .mobile & {
-    bottom: 80px;
+    bottom: 0;
+    right: 0;
     top: auto;
-    transform: rotate(90deg);
-    font-size: 80px;
+    transform: rotate(90deg) translate(-50%, -50%);
+    font-size: 60px;
   }
 }
 

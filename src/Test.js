@@ -1,8 +1,25 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
-
 import { HorizontalBlurShader } from 'three/examples/jsm/shaders/HorizontalBlurShader.js';
 import { VerticalBlurShader } from 'three/examples/jsm/shaders/VerticalBlurShader.js';
+
+// import * as firebase from 'firebase';
+
+// // Firebase configuration
+// const firebaseConfig = {
+//   apiKey: "AIzaSyC4sirCRU4mSEkVVlzOndsvwa9K50DM0gY",
+//   authDomain: "emilio-game.firebaseapp.com",
+//   databaseURL: "https://emilio-game.firebaseio.com",
+//   projectId: "emilio-game",
+//   storageBucket: "emilio-game.appspot.com",
+//   messagingSenderId: "1095598874871",
+//   appId: "1:1095598874871:web:e94bb6051fb85ebd83f3f2",
+//   measurementId: "G-WVL1JPWRCJ"
+// };
+// // Initialize Firebase
+// firebase.initializeApp(firebaseConfig);
+// firebase.analytics();
+
 
 let camera, scene, renderer, canvas;
 let geometry, texture, textureOpen, material, mesh;
@@ -29,13 +46,21 @@ let isTwirling = false,
     timeJumping = 0;
 
 // Shadow Variables
-let shadowGroup, renderTarget, renderTargetBlur, shadowCamera, cameraHelper, depthMaterial, horizontalBlurMaterial, verticalBlurMaterial;
-let plane, blurPlane, fillPlane;
-
-let PLANE_WIDTH = window.innerWidth * 4,
+let shadowGroup,
+    renderTarget,
+    renderTargetBlur,
+    shadowCamera,
+    cameraHelper,
+    depthMaterial,
+    horizontalBlurMaterial,
+    verticalBlurMaterial,
+    plane,
+    blurPlane,
+    fillPlane,
+    PLANE_WIDTH = window.innerWidth * 4,
     PLANE_HEIGHT = window.innerHeight * 4,
     CAMERA_HEIGHT = 500;
-      
+
 
 class Test extends Component {
   state = {
@@ -52,6 +77,7 @@ class Test extends Component {
       opacity: 1,
     },
     kibbleEaten: 0,
+    totalKibble: spheres.length,
     emilio: {
       isEating: false,
       isTwirling: null,
@@ -74,9 +100,9 @@ class Test extends Component {
         emilioCanvas = document.querySelector('.emiliocanvas');
 
     // Load textures.
-    texture = new THREE.TextureLoader().load( 'img/emilio-0-new.jpg' );
-    textureOpen = new THREE.TextureLoader().load( 'img/emilio-1-new.jpg' );
-    textureKibble = new THREE.TextureLoader().load( 'img/kibble.png' );
+    texture = new THREE.TextureLoader().load( 'img/060420-emilio-0.jpg' );
+    textureOpen = new THREE.TextureLoader().load( 'img/060420-emilio-1.jpg' );
+    textureKibble = new THREE.TextureLoader().load( 'img/kibble.jpg' );
     
     // Set up the initial scene
     camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
@@ -111,7 +137,7 @@ class Test extends Component {
     mesh.rotation.z = this.state.emilio.rotation.z
 
     // Needed in order to update Emilio's texture
-    mesh.material.map.needsUpdate = true;
+    // mesh.material.map.needsUpdate = true;
 
     // Add Emilio to the scene
     scene.add(mesh);
@@ -152,38 +178,32 @@ class Test extends Component {
       timeElapsed: this.state.timeElapsed + 1
     })
 
-    // Emilio moves left by 10x every ~16.7 milliseconds.
-
-    ghost.position.x = mesh.position.x;
-    ghost.position.y = mesh.position.y;
-
-    shadowGroup.position.x = mesh.position.x;
-
     // Physics/Gravity
-    // Make Emilio faster after he passes 100 kibble
-    if (this.state.kibbleEaten >= 49 &&
-        this.state.kibbleEaten <= 299) {
+    // Make Emilio faster after he passes x kibbles
+    if (this.state.kibbleEaten >= 50 &&
+        this.state.kibbleEaten <= 100) {
       mesh.position.x += 30;
       velocity = 1.8
-    } else if (this.state.kibbleEaten > 299 &&
-        this.state.kibbleEaten <= 599) {
+    } else if (this.state.kibbleEaten > 100 &&
+        this.state.kibbleEaten <= 700) {
       mesh.position.x += 40;
       velocity = 2.2
-    } else if (this.state.kibbleEaten > 599) {
-      mesh.position.x += 70;
+    } else if (this.state.kibbleEaten > 700) {
+      mesh.position.x += 60;
       velocity = 2.6
     } else {
       mesh.position.x += 20;
     }
 
+    // Ghost & Plane follows Emilio.
+    ghost.position.x = mesh.position.x;
+    ghost.position.y = mesh.position.y;
+    shadowGroup.position.x = mesh.position.x;
+
     // If Emilio is in the air, move faster while falling to the ground.
     if (mesh.position.y > 10) {
       if (!isJumping) {
         mesh.position.y -= 10
-      }
-
-      if (!isEating) {
-        mesh.material.map = textureOpen;
       }
     } else {
       mesh.position.y = 0;
@@ -199,7 +219,7 @@ class Test extends Component {
 
     // Have the camera follow Emilio.
     temp.setFromMatrixPosition(goal.matrixWorld);
-    camera.position.lerp(temp, 0.4);
+    camera.position.lerp(temp, 0.8);
     camera.lookAt( ghost.position );
     // camera.lookAt( ghost.position.x, ghost.position.y, spheres[1].position.z );
     camera.updateProjectionMatrix();
@@ -366,13 +386,13 @@ class Test extends Component {
   addKibble = () => {
     // new THREE.BoxBufferGeometry( radius*2, radius*2, radius*2 );
     geometryKibble = new THREE.CylinderBufferGeometry( radius, radius, radius*2, radius*2 ) //new THREE.SphereBufferGeometry( radius, 32, 32 );
-    materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble, transparent: true } );
+    materialKibble = new THREE.MeshBasicMaterial( { map: textureKibble } );
     materialKibble.side = THREE.DoubleSide;
 
-    
+
     // Scatter 100 pieces of kibble in random positions
     // Be sure not to go beyond the available area.
-    for (var i = 0; i < 2; i ++) {
+    for (let i = 0; i < 5; i ++) {
       meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
       meshKibble.rotation.x = mesh.rotation.x
 
@@ -392,17 +412,14 @@ class Test extends Component {
       spheres.push( meshKibble );
     }
 
-
-    for (var i = 0; i < 100; i ++) {
+    for (let i = 0; i < 50; i ++) {
       meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
       meshKibble.rotation.x = mesh.rotation.x
 
       meshKibble.rotation.y = mesh.rotation.y
       meshKibble.rotation.z = mesh.rotation.z
-      // meshKibble.position.x = Math.random() * (80000 - 2000) + 2000;
-      meshKibble.position.x = 1000 + 300 * i
-      // meshKibble.position.y = Math.random() * (1000 - 0) + 0;
-      meshKibble.position.y = Math.abs(Math.sin(0.3 * i) * (1000 - 0) + 0);
+      meshKibble.position.x = 2100 + 300 * i
+      meshKibble.position.y = Math.abs(Math.sin(0.25 * i) * (1000 - 0) + 0);
       meshKibble.scale.set(
         meshKibble.scale.x = meshKibble.scale.x * 0.8,
         meshKibble.scale.y = meshKibble.scale.y * 0.8,
@@ -415,14 +432,14 @@ class Test extends Component {
       spheres.push( meshKibble );
     }
 
-    for (var i = 0; i < 20; i ++) {
+    for (let i = 0; i < 10; i ++) {
       meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
       meshKibble.rotation.x = mesh.rotation.x
 
       meshKibble.rotation.y = mesh.rotation.y
       meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = 31700 + 200 * i
-      meshKibble.position.y = 2200;
+      meshKibble.position.x = 17200 + i * 400;
+      meshKibble.position.y = 400 + 100 * i;
       meshKibble.scale.set(
         meshKibble.scale.x = meshKibble.scale.x * 0.8,
         meshKibble.scale.y = meshKibble.scale.y * 0.8,
@@ -434,68 +451,210 @@ class Test extends Component {
       scene.add( meshKibble );
       spheres.push( meshKibble );
     }
-
-    for (var i = 0; i < 20; i ++) {
-      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
-      meshKibble.rotation.x = mesh.rotation.x
-
-      meshKibble.rotation.y = mesh.rotation.y
-      meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = 31700 + 200 * i
-      meshKibble.position.y = 2450;
-      meshKibble.scale.set(
-        meshKibble.scale.x = meshKibble.scale.x * 0.8,
-        meshKibble.scale.y = meshKibble.scale.y * 0.8,
-        meshKibble.scale.z = meshKibble.scale.z * 0.8,
-      )
-        
-      meshKibble.name = 'Kibble'
-
-      scene.add( meshKibble );
-      spheres.push( meshKibble );
-    }
-
-    for (var i = 0; i < 20; i ++) {
-      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
-      meshKibble.rotation.x = mesh.rotation.x
-
-      meshKibble.rotation.y = mesh.rotation.y
-      meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = 31700 + 200 * i
-      meshKibble.position.y = 2700;
-      meshKibble.scale.set(
-        meshKibble.scale.x = meshKibble.scale.x * 0.8,
-        meshKibble.scale.y = meshKibble.scale.y * 0.8,
-        meshKibble.scale.z = meshKibble.scale.z * 0.8,
-      )
-        
-      meshKibble.name = 'Kibble'
-
-      scene.add( meshKibble );
-      spheres.push( meshKibble );
-    }
-
-    for (var i = 0; i < 800; i ++) {
-      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
-      meshKibble.rotation.x = mesh.rotation.x
-
-      meshKibble.rotation.y = mesh.rotation.y
-      meshKibble.rotation.z = mesh.rotation.z
-      meshKibble.position.x = Math.random() * (200000 - 30700) + 30700;
-      meshKibble.position.y = Math.random() * (1500 - 0) + 0;
-      meshKibble.scale.set(
-        meshKibble.scale.x = meshKibble.scale.x * 0.8,
-        meshKibble.scale.y = meshKibble.scale.y * 0.8,
-        meshKibble.scale.z = meshKibble.scale.z * 0.8,
-      )
-        
-      meshKibble.name = 'Kibble'
-
-      scene.add( meshKibble );
-      spheres.push( meshKibble );
-    }
-
     
+    for (let i = 0; i < 10; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 21600 + i * 400;
+      meshKibble.position.y = 850 + 100 * i;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 50; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 26000 + 300 * i
+      meshKibble.position.y = 1850;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 11; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 41000 + i * 400;
+      meshKibble.position.y = 1850 - 100 * i;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 100; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 45600 + 400 * i
+      meshKibble.position.y = Math.abs(Math.sin(0.25 * i) * (1000 - 500) + 500);
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 2; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 85520;
+      meshKibble.position.y = 250 + 250 * i;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 20; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 85800 + 200 * i
+      meshKibble.position.y = 100;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 20; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 85800 + 200 * i
+      meshKibble.position.y = 350;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 20; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 85800 + 200 * i
+      meshKibble.position.y = 600;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (let i = 0; i < 80; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = 89950 + 400 * i
+      meshKibble.position.y = Math.abs(Math.sin(0.25 * i) * (1000 - 500) + 500);
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    for (var i = 0; i < 222; i ++) {
+      meshKibble = new THREE.Mesh( geometryKibble, materialKibble );
+      meshKibble.rotation.x = mesh.rotation.x
+
+      meshKibble.rotation.y = mesh.rotation.y
+      meshKibble.rotation.z = mesh.rotation.z
+      meshKibble.position.x = Math.random() * (160000 - 122300) + 122300;
+      meshKibble.position.y = Math.random() * (400 - 200) + 200;
+      meshKibble.scale.set(
+        meshKibble.scale.x = meshKibble.scale.x * 0.8,
+        meshKibble.scale.y = meshKibble.scale.y * 0.8,
+        meshKibble.scale.z = meshKibble.scale.z * 0.8,
+      )
+        
+      meshKibble.name = 'Kibble'
+
+      scene.add( meshKibble );
+      spheres.push( meshKibble );
+    }
+
+    this.setState({
+      totalKibble: spheres.length,
+    })
   }
   
 
@@ -518,14 +677,12 @@ class Test extends Component {
       if (!kibbleIDs.includes(kibbleID)) {
         kibbleIDs.push( kibbleID )
 
-        for (let i = 0; i < 10; i ++) {
-          this.setState({
-            emilio: {
-              isEating: true
-            },
-            kibbleEaten: this.state.kibbleEaten + 1,
-          })
-        }
+        this.setState({
+          emilio: {
+            isEating: true
+          },
+          kibbleEaten: this.state.kibbleEaten + 1,
+        })
       }
     } else {
       isEating = false
@@ -535,7 +692,6 @@ class Test extends Component {
         }
       })
     }
-    console.log(kibbleIDs)
 
     for ( let i = 0; i < intersects.length; i++ ) {
       if (intersects.length > 0) {
@@ -563,24 +719,7 @@ class Test extends Component {
       mesh.rotation.z = -1.2
     }
 
-    // TODO: Rewrite without using setTimeout!
-    requestAnimationFrame(() => {
-      if (mesh.material.map === texture) {
-        setTimeout(() => {
-          mesh.material.map = textureOpen
-
-          if (mesh.material.map === textureOpen) {
-            setTimeout(() => {
-              mesh.material.map = texture
-            }, 60);
-          }
-        }, 60);
-      } else {
-        setTimeout(() => {
-          mesh.material.map = texture
-        }, 60);
-      }
-    });
+    mesh.material.map = textureOpen
   }
 
 
@@ -600,6 +739,7 @@ class Test extends Component {
         mesh.rotation.y = 6.5
         break
       default:
+        return
     }
   }
 
@@ -616,7 +756,6 @@ class Test extends Component {
       timeJumping = 0;
     }
   }
-
 
   rotateCamera = () => {
     if (this.state.width < this.state.height) {
@@ -638,10 +777,12 @@ class Test extends Component {
     this.rotateCamera();
 
     document.addEventListener('keydown', event => {
+      //  Jump
       if (event.keyCode === 32) {
         isJumping = true;
       }
 
+      // Tail
       if (event.keyCode === 84) {
         switch (isTwirling) {
           case false:
@@ -650,7 +791,33 @@ class Test extends Component {
           case true:
             isTwirling = false
             break
+          default:
+            return;
         }
+      }
+
+      //  ArrowDown -- Go down
+      if (event.keyCode === 40) {
+        let currentPos = mesh.position
+        if (currentPos > 0) {
+          mesh.position.lerpVectors(
+            new THREE.Vector3( currentPos.x, currentPos.y, 0 ),
+            new THREE.Vector3( mesh.position.x, mesh.position.y-60, 0 ),
+          0.1)
+        }
+      }
+
+      // ArrowRight -- Go faster
+      if (event.keyCode === 39) {
+        let currentPos = mesh.position.x
+        mesh.position.lerp(
+          new THREE.Vector3(
+            currentPos+5000,
+            mesh.position.y,
+            0
+          ),
+        0.1)
+        console.log(currentPos)
       }
     });
 
@@ -663,8 +830,8 @@ class Test extends Component {
   render() {
     return (
       <div className="container">
-        <div className="note">press the spacebar or tap to jump</div>
-        <div id="count" className={`${this.state.emilio.isEating ? 'active' : ''}`}>{ this.state.kibbleEaten }</div>
+        <div className="note"><span className="desktop">press the spacebar</span><span className="mobile-div">tap to jump</span></div>
+        <div id="count" className={`${this.state.emilio.isEating ? 'active' : ''}`}>{ this.state.kibbleEaten } / { this.state.totalKibble }</div>
         <div className="emiliocanvas"></div>
       </div>
     );
