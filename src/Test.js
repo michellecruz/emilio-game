@@ -6,7 +6,6 @@ import { VerticalBlurShader } from 'three/examples/jsm/shaders/VerticalBlurShade
 // import * as firebase from 'firebase';
 
 
-
 let camera, scene, renderer, canvas;
 let geometry, texture, textureOpen, material, mesh;
 
@@ -240,7 +239,7 @@ class Test extends Component {
 
     // If Emilio is on the ground and is not eating,
     // close his mouth.
-    if (mesh.position.y <= 0 && !isEating) {
+    if (!isEating) {
       mesh.material.map = texture;
     }
 
