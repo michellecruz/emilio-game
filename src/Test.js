@@ -5,20 +5,6 @@ import { VerticalBlurShader } from 'three/examples/jsm/shaders/VerticalBlurShade
 
 // import * as firebase from 'firebase';
 
-// // Firebase configuration
-// const firebaseConfig = {
-//   apiKey: "AIzaSyC4sirCRU4mSEkVVlzOndsvwa9K50DM0gY",
-//   authDomain: "emilio-game.firebaseapp.com",
-//   databaseURL: "https://emilio-game.firebaseio.com",
-//   projectId: "emilio-game",
-//   storageBucket: "emilio-game.appspot.com",
-//   messagingSenderId: "1095598874871",
-//   appId: "1:1095598874871:web:e94bb6051fb85ebd83f3f2",
-//   measurementId: "G-WVL1JPWRCJ"
-// };
-// // Initialize Firebase
-// firebase.initializeApp(firebaseConfig);
-// firebase.analytics();
 
 
 let camera, scene, renderer, canvas;

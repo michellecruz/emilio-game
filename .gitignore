@@ -5,8 +5,9 @@
 /.pnp
 .pnp.js
 
-# testing
-/coverage
+# secrets
+firebase.config
+.config
 
 # production
 # /build
