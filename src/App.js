@@ -1,11 +1,11 @@
 import React from 'react';
-import Test from './Test';
+import EmilioGame from './EmilioGame';
 import './App.css';
 
 function App() {
   return (
     <div className="App">
-      <Test />
+      <EmilioGame />
     </div>
   );
 }

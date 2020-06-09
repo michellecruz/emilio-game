@@ -6,8 +6,7 @@
 .pnp.js
 
 # secrets
-firebase.config
-.config
+/src/firebase.js
 
 # production
 # /build
